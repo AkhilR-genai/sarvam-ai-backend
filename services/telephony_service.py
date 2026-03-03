@@ -60,19 +60,25 @@ class TelephonyService:
             # Format phone number
             full_number = f"{country_code}{to_number}"
             
-            print(f"📞 Initiating call to {full_number} with voice webhook URL")
+            voice_webhook_url = f"{self.config.webhook_base_url}/api/twilio/voice/{call_id}"
+            print(f"📞 Initiating call to {full_number}")
+            print(f"🌐 Voice webhook URL: {voice_webhook_url}")
+            print(f"🌐 Webhook base: {self.config.webhook_base_url}")
             
             # Create call with URL webhook (ngrok is working based on status callbacks)
             call = self.client.calls.create(
                 to=full_number,
                 from_=self.config.phone_number,
-                url=f"{self.config.webhook_base_url}/api/twilio/voice/{call_id}",  # Use URL for initial greeting
+                url=voice_webhook_url,  # Use URL for initial greeting
                 method='POST',
                 status_callback=f"{self.config.webhook_base_url}/api/twilio/status/{call_id}",
                 status_callback_event=["initiated", "ringing", "answered", "completed"],
                 record=True,
                 recording_status_callback=f"{self.config.webhook_base_url}/api/twilio/recording/{call_id}"
             )
+            
+            print(f"✅ Twilio call created: {call.sid}")
+            print(f"   Status: {call.status}")
             
             return {
                 "twilio_call_sid": call.sid,
