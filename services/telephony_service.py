@@ -105,9 +105,10 @@ class TelephonyService:
         response = VoiceResponse()
         
         # Gather input from lead with speech recognition
+        # Use generic endpoint for Twilio trial compatibility
         gather = Gather(
             input='speech',
-            action=f"{self.config.webhook_base_url}/api/twilio/process-speech/{call_id}",
+            action=f"{self.config.webhook_base_url}/api/twilio/process-speech",
             method='POST',
             timeout=5,  # Wait 5 seconds after speech ends
             speech_timeout='auto',  # Auto-detect end of speech
@@ -130,7 +131,7 @@ class TelephonyService:
         
         # If no response after timeout, prompt again and redirect back to listen
         response.say("I didn't get that. Please say yes or no.", voice='Polly.Aditi-Neural', language='en-IN')
-        response.redirect(f"{self.config.webhook_base_url}/api/twilio/voice/{call_id}", method='POST')
+        response.redirect(f"{self.config.webhook_base_url}/api/twilio/voice", method='POST')
         
         return str(response)
     
@@ -162,9 +163,10 @@ class TelephonyService:
             response.hangup()
         else:
             # Continue conversation - gather more input
+            # Use generic endpoint for Twilio trial compatibility
             gather = Gather(
                 input='speech',
-                action=f"{self.config.webhook_base_url}/api/twilio/process-speech/{call_id}",
+                action=f"{self.config.webhook_base_url}/api/twilio/process-speech",
                 method='POST',
                 timeout=5,  # Wait 5 seconds after speech ends
                 speech_timeout='auto',
@@ -187,7 +189,7 @@ class TelephonyService:
             # If no response, ask again
             response.say("Are you still there? Please let me know your thoughts.", voice='Polly.Aditi-Neural', language='en-IN')
             # Redirect to continue listening
-            response.redirect(f"{self.config.webhook_base_url}/api/twilio/process-speech/{call_id}", method='POST')
+            response.redirect(f"{self.config.webhook_base_url}/api/twilio/voice", method='POST')
         
         return str(response)
     

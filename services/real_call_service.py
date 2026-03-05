@@ -247,6 +247,13 @@ class RealCallService:
         
         return True
     
+    def get_call_by_twilio_sid(self, twilio_call_sid: str) -> Optional[dict]:
+        """Look up call by Twilio Call SID"""
+        for call_id, call_data in self.active_calls.items():
+            if call_data.get("twilio_call_sid") == twilio_call_sid:
+                return call_data
+        return None
+    
     def get_call(self, call_id: str) -> Optional[dict]:
         """Get call data by ID"""
         return self.active_calls.get(call_id)
