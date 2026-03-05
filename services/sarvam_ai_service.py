@@ -14,10 +14,11 @@ class SarvamAIConfig:
     """Configuration for Sarvam AI APIs"""
     def __init__(self):
         self.api_key = os.getenv("SARVAM_AI_API_KEY") or os.getenv("SARVAM_API_KEY")
-        self.base_url = os.getenv("SARVAM_AI_BASE_URL", "https://api.sarvam.ai/v1")
+        self.base_url = "https://api.sarvam.ai"          # NO /v1 for TTS/STT
+        self.llm_base_url = "https://api.sarvam.ai/v1"   # /v1 only for LLM
         self.tts_url = f"{self.base_url}/text-to-speech"
         self.stt_url = f"{self.base_url}/speech-to-text"
-        self.llm_url = f"{self.base_url}/chat/completions"
+        self.llm_url = f"{self.llm_base_url}/chat/completions"
         
 
 class TTSRequest(BaseModel):
@@ -45,10 +46,8 @@ class SarvamAIService:
     
     def __init__(self):
         self.config = SarvamAIConfig()
-        headers = {"Content-Type": "application/json"}
-        if self.config.api_key:
-            headers["Authorization"] = f"Bearer {self.config.api_key}"
-
+        # Sarvam AI uses api-subscription-key header
+        headers = {"api-subscription-key": self.config.api_key or ""}
         self.client = httpx.AsyncClient(timeout=30.0, headers=headers)
 
     def _ensure_config(self):
@@ -70,19 +69,21 @@ class SarvamAIService:
         """
         self._ensure_config()
         try:
+            # Sarvam AI TTS expects: inputs (list), target_language_code, speaker, model
             payload = {
-                "text": text,
-                "language_code": language,
-                "speaker": "meera",  # Use appropriate Sarvam AI voice
+                "inputs": [text],
+                "target_language_code": language,
+                "speaker": "meera",
                 "pitch": 0,
-                "pace": 1.0,
-                "loudness": 1.0,
+                "pace": 1.65,
+                "loudness": 1.5,
                 "speech_sample_rate": 8000,
                 "enable_preprocessing": True,
                 "model": "bulbul:v1"
             }
             
             print(f"🔵 Calling Sarvam AI TTS: {self.config.tts_url}")
+            print(f"🔵 API Key (first 10 chars): {str(self.config.api_key)[:10]}...")
             response = await self.client.post(
                 self.config.tts_url,
                 json=payload,
@@ -92,26 +93,25 @@ class SarvamAIService:
             print(f"🔵 Sarvam AI TTS Response Status: {response.status_code}")
             
             if response.status_code != 200:
-                print(f"❌ Sarvam AI TTS Error: {response.text}")
-                raise Exception(f"TTS failed with status {response.status_code}")
+                print(f"❌ Sarvam AI TTS Error: {response.status_code} - {response.text}")
+                raise Exception(f"TTS failed with status {response.status_code}: {response.text}")
             
-            response.raise_for_status()
+            # Sarvam AI returns JSON with audios array containing base64 WAV
+            import base64
+            result = response.json()
+            print(f"🔵 Sarvam AI TTS Response keys: {list(result.keys())}")
             
-            # Check if response is base64 encoded
-            content_type = response.headers.get("content-type", "")
-            if "json" in content_type:
-                # Response might be JSON with base64 audio
-                import base64
-                result = response.json()
-                if "audio" in result:
-                    audio_data = base64.b64decode(result["audio"])
-                    print(f"✅ Sarvam AI TTS decoded base64 audio")
-                    return audio_data
-            
-            # Direct binary audio
-            audio_data = response.content
-            print(f"✅ Sarvam AI TTS generated {len(audio_data)} bytes")
-            return audio_data
+            if "audios" in result and len(result["audios"]) > 0:
+                audio_data = base64.b64decode(result["audios"][0])
+                print(f"✅ Sarvam AI TTS decoded audio: {len(audio_data)} bytes")
+                return audio_data
+            elif "audio" in result:
+                audio_data = base64.b64decode(result["audio"])
+                print(f"✅ Sarvam AI TTS decoded audio (legacy): {len(audio_data)} bytes")
+                return audio_data
+            else:
+                print(f"❌ Unexpected TTS response format: {result}")
+                raise Exception(f"Unexpected TTS response: {result}")
             
         except httpx.TimeoutException as e:
             print(f"⏱️ Sarvam AI TTS timeout: {e}")
@@ -203,7 +203,7 @@ class SarvamAIService:
             
             # Call Sarvam AI LLM
             payload = {
-                "model": "sarvam-2b-v0.5",  # Or appropriate Sarvam AI model
+                "model": "sarvam-m",  # Sarvam AI conversational model
                 "messages": messages,
                 "temperature": 0.7,
                 "max_tokens": 150,

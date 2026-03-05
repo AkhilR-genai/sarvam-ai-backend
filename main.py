@@ -63,6 +63,9 @@ else:
 # Product knowledge
 app.include_router(product.router)
 
+# Ensure static/audio directory exists for Sarvam AI TTS audio files
+os.makedirs("static/audio", exist_ok=True)
+
 # Mount static files for serving Sarvam AI TTS audio
 app.mount("/static", StaticFiles(directory="static"), name="static")
 

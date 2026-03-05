@@ -17,6 +17,7 @@ class TwilioConfig:
         self.auth_token = os.getenv("TWILIO_AUTH_TOKEN")
         self.phone_number = os.getenv("TWILIO_PHONE_NUMBER")  # Your Twilio number
         self.webhook_base_url = os.getenv("WEBHOOK_BASE_URL", "https://your-domain.com")
+        self.application_sid = os.getenv("TWILIO_APPLICATION_SID")  # TwiML App SID
 
 
 class TelephonyService:
@@ -61,15 +62,14 @@ class TelephonyService:
             full_number = f"{country_code}{to_number}"
             
             print(f"📞 Initiating call to {full_number}")
-            print(f"🌐 Using Twilio Console configured webhook (trial account mode)")
+            print(f"🎯 Using TwiML Application: {self.config.application_sid}")
             print(f"🌐 Webhook base: {self.config.webhook_base_url}")
             
-            # For Twilio trial accounts: DON'T send url parameter
-            # Let it use the webhook configured in Twilio Console
+            # Create call with TwiML Application SID (for trial accounts)
             call = self.client.calls.create(
                 to=full_number,
                 from_=self.config.phone_number,
-                # url parameter removed - use Console configuration
+                application_sid=self.config.application_sid,
                 status_callback=f"{self.config.webhook_base_url}/api/twilio/status/{call_id}",
                 status_callback_event=["initiated", "ringing", "answered", "completed"],
                 record=True,
