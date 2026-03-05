@@ -62,14 +62,15 @@ class TelephonyService:
             full_number = f"{country_code}{to_number}"
             
             print(f"📞 Initiating call to {full_number}")
-            print(f"🎯 Using TwiML Application: {self.config.application_sid}")
-            print(f"🌐 Webhook base: {self.config.webhook_base_url}")
+            voice_webhook_url = f"{self.config.webhook_base_url}/api/twilio/voice"
+            print(f"🌐 Voice webhook URL: {voice_webhook_url}")
             
-            # Create call with TwiML Application SID (for trial accounts)
+            # Use url parameter - works on Render (no ngrok interstitial issue)
             call = self.client.calls.create(
                 to=full_number,
                 from_=self.config.phone_number,
-                application_sid=self.config.application_sid,
+                url=voice_webhook_url,
+                method='POST',
                 status_callback=f"{self.config.webhook_base_url}/api/twilio/status/{call_id}",
                 status_callback_event=["initiated", "ringing", "answered", "completed"],
                 record=True,
